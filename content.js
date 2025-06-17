@@ -5,6 +5,7 @@ let controlsCreated = false;
 let currentUrlIndex = 0;
 let totalUrls = 1;
 let extensionTabId = null;
+let domainSelectors = [];
 
 // Constants
 const SCROLL_INTERVAL = 50;
@@ -18,13 +19,6 @@ function resetScrollState() {
     }
 }
 
-// Domain-specific scroll element selectors
-const DOMAIN_SCROLL_SELECTORS = {
-    'cloud.samsara.com': '.DashboardGridShow--overflowScroll'
-    // Add more domains and their selectors here
-    // 'example.com': '.some-class',
-    // 'another-domain.com': '#some-id'
-};
 
 // Create and inject the overlay
 function createOverlay() {
@@ -312,18 +306,59 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
+// Load domain selectors when the content script starts
+chrome.storage.sync.get(['domainSelectors'], function(data) {
+    if (data.domainSelectors) {
+        domainSelectors = data.domainSelectors;
+    }
+});
+
+// Listen for changes to domain selectors
+chrome.storage.onChanged.addListener(function(changes, namespace) {
+    if (namespace === 'sync' && changes.domainSelectors) {
+        domainSelectors = changes.domainSelectors.newValue || [];
+    }
+});
+
+// Get the appropriate scroll element for the current page
 function getScrollElement() {
-    const hostname = window.location.hostname;
-    const selector = DOMAIN_SCROLL_SELECTORS[hostname];
+    // Get the current domain
+    const currentDomain = window.location.hostname;
     
-    if (selector) {
-        const element = document.querySelector(selector);
+    // Find a matching domain selector
+    const domainSelector = domainSelectors.find(selector => {
+        // Check if the current domain matches or is a subdomain
+        return currentDomain === selector.domain || 
+               currentDomain.endsWith('.' + selector.domain);
+    });
+    
+    if (domainSelector) {
+        console.log('Using custom scroll selector for domain:', currentDomain);
+        const element = document.querySelector(domainSelector.selector);
         if (element) {
+            console.log('Found scroll element with selector:', domainSelector.selector);
             return element;
+        } else {
+            console.log('Selector not found, falling back to default scroll element');
         }
     }
     
-    return document.documentElement;
+    // Default scroll element logic
+    const scrollElement = document.documentElement;
+    const body = document.body;
+    
+    // Check if body is scrollable
+    if (body.scrollHeight > body.clientHeight) {
+        return body;
+    }
+    
+    // Check if documentElement is scrollable
+    if (scrollElement.scrollHeight > scrollElement.clientHeight) {
+        return scrollElement;
+    }
+    
+    // If neither is scrollable, return documentElement as default
+    return scrollElement;
 }
 
 function startScrolling(settings) {
