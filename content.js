@@ -8,7 +8,7 @@ let extensionTabId = null;
 let domainSelectors = [];
 
 // Constants
-const SCROLL_INTERVAL = 50;
+const SCROLL_INTERVAL = 16;
 const MESSAGE_PREFIX = 'URL_CYCLE_AUTO_SCROLL_';
 
 // Reset all scroll-related parameters
