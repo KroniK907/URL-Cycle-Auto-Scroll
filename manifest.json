@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "URL Cycle Auto Scroll",
+  "version": "1.0",
+  "description": "Automatically scrolls through a list of URLs",
+  "permissions": ["storage", "tabs", "activeTab"],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["overlay.html", "overlay.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
