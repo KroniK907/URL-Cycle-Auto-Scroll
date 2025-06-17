@@ -9,6 +9,7 @@ let domainSelectors = [];
 
 // Constants
 const SCROLL_INTERVAL = 50;
+const MESSAGE_PREFIX = 'URL_CYCLE_AUTO_SCROLL_';
 
 // Reset all scroll-related parameters
 function resetScrollState() {
@@ -25,7 +26,7 @@ function createOverlay() {
     if (controlsCreated) return;
     
     // Request initial URL information from background script
-    chrome.runtime.sendMessage({ action: 'getUrlInfo' }, (response) => {
+    chrome.runtime.sendMessage({ action: MESSAGE_PREFIX + 'getUrlInfo' }, (response) => {
         if (response && response.urlInfo) {
             currentUrlIndex = response.urlInfo.currentIndex;
             totalUrls = response.urlInfo.totalUrls;
@@ -162,7 +163,7 @@ function setupEventListeners(playPauseBtn, prevBtn, nextBtn, urlCounter) {
     // Navigate to previous URL
     prevBtn.addEventListener('click', () => {
         console.log('Previous button clicked');
-        chrome.runtime.sendMessage({ action: 'previousUrl' }, (response) => {
+        chrome.runtime.sendMessage({ action: MESSAGE_PREFIX + 'previousUrl' }, (response) => {
             console.log('Previous URL response:', response);
         });
     });
@@ -170,7 +171,7 @@ function setupEventListeners(playPauseBtn, prevBtn, nextBtn, urlCounter) {
     // Navigate to next URL
     nextBtn.addEventListener('click', () => {
         console.log('Next button clicked');
-        chrome.runtime.sendMessage({ action: 'nextUrl' }, (response) => {
+        chrome.runtime.sendMessage({ action: MESSAGE_PREFIX + 'nextUrl' }, (response) => {
             console.log('Next URL response:', response);
         });
     });
@@ -224,7 +225,7 @@ document.addEventListener('fullscreenchange', () => {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log('Content script received message:', request);
     
-    if (request.action === 'tabCreated') {
+    if (request.action === MESSAGE_PREFIX + 'tabCreated') {
         extensionTabId = request.tabId;
         // Create and dispatch a custom event that can be listened to by other scripts
         const event = new CustomEvent('extensionTabCreated', {
@@ -235,7 +236,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
         });
         document.dispatchEvent(event);
-    } else if (request.action === 'startScrolling') {
+    } else if (request.action === MESSAGE_PREFIX + 'startScrolling') {
         console.log('Starting scroll with settings:', request.settings);
         // Reset state before starting new scroll
         resetScrollState();
@@ -273,14 +274,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
         
         sendResponse({ status: 'started' });
-    } else if (request.action === 'pauseScrolling') {
+    } else if (request.action === MESSAGE_PREFIX + 'pauseScrolling') {
         if (scrollInterval) {
             clearInterval(scrollInterval);
             scrollInterval = null;
         }
         isPaused = true;
         sendResponse({ status: 'paused' });
-    } else if (request.action === 'resumeScrolling') {
+    } else if (request.action === MESSAGE_PREFIX + 'resumeScrolling') {
         isPaused = false;
         const scrollElement = getScrollElement();
         if (request.settings.scrollMode === 'continuous') {
@@ -289,7 +290,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             startPageJump(scrollElement, request.settings);
         }
         sendResponse({ status: 'resumed' });
-    } else if (request.action === 'updateUrlInfo') {
+    } else if (request.action === MESSAGE_PREFIX + 'updateUrlInfo') {
         currentUrlIndex = request.currentIndex;
         totalUrls = request.totalUrls;
         const counter = document.getElementById('urlCounter');
@@ -297,7 +298,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             updateUrlCounter(counter);
         }
         sendResponse({ status: 'url info updated' });
-    } else if (request.action === 'createOverlay') {
+    } else if (request.action === MESSAGE_PREFIX + 'createOverlay') {
         if(request.tabId) {
             extensionTabId = request.tabId;
         }
@@ -433,7 +434,7 @@ function startContinuousScroll(scrollElement, settings) {
             scrollInterval = null;
             isScrolling = false;
             window.removeEventListener('resize', handleResize);
-            chrome.runtime.sendMessage({ action: 'reachedBottom' }, (response) => {
+            chrome.runtime.sendMessage({ action: MESSAGE_PREFIX + 'reachedBottom' }, (response) => {
                 console.log('Reached bottom response:', response);
             });
         } else {
@@ -494,7 +495,7 @@ function startPageJump(scrollElement, settings) {
             // Reached bottom
             isScrolling = false;
             window.removeEventListener('resize', handleResize);
-            chrome.runtime.sendMessage({ action: 'reachedBottom' });
+            chrome.runtime.sendMessage({ action: MESSAGE_PREFIX + 'reachedBottom' });
             return;
         }
         
@@ -521,5 +522,5 @@ function startPageJump(scrollElement, settings) {
 window.addEventListener('load', () => {
     // Reset state when page loads
     resetScrollState();
-    chrome.runtime.sendMessage({ action: 'pageLoaded' });
+    chrome.runtime.sendMessage({ action: MESSAGE_PREFIX + 'pageLoaded' });
 }); 

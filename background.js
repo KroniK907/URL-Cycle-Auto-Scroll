@@ -23,6 +23,8 @@ let navigationRetryTimeoutId = null;
 const INITIAL_DELAY = 5000; // 5 seconds before starting to scroll
 const BOTTOM_PAUSE = 5000; // 5 seconds pause at bottom
 
+const MESSAGE_PREFIX = 'URL_CYCLE_AUTO_SCROLL_';
+
 // Function to clear all timeouts
 function clearAllTimeouts() {
     const timeouts = [
@@ -50,7 +52,7 @@ function clearAllTimeouts() {
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'start') {
+    if (request.action === MESSAGE_PREFIX + 'start') {
         urls = request.urls;
         currentUrlIndex = 0;
         isRunning = true;
@@ -62,7 +64,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         };
         loadNextUrl();
         sendResponse({ success: true });
-    } else if (request.action === 'stop') {
+    } else if (request.action === MESSAGE_PREFIX + 'stop') {
         isRunning = false;
         clearAllTimeouts();
         if (currentTab) {
@@ -70,7 +72,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             currentTab = null;
         }
         sendResponse({ success: true });
-    } else if (request.action === 'getUrlInfo') {
+    } else if (request.action === MESSAGE_PREFIX + 'getUrlInfo') {
         // Send current URL information
         sendResponse({
             urlInfo: {
@@ -78,7 +80,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 totalUrls: urls.length
             }
         });
-    } else if (request.action === 'reachedBottom') {
+    } else if (request.action === MESSAGE_PREFIX + 'reachedBottom') {
         if (isRunning) {
             bottomPauseTimeoutId = setTimeout(() => {
                 currentUrlIndex = (currentUrlIndex + 1) % urls.length;
@@ -86,21 +88,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }, settings.bottomPause);
         }
         sendResponse({ success: true });
-    } else if (request.action === 'previousUrl') {
+    } else if (request.action === MESSAGE_PREFIX + 'previousUrl') {
         if (isRunning && urls.length > 0) {
             clearAllTimeouts();
             currentUrlIndex = (currentUrlIndex - 1 + urls.length) % urls.length;
             loadNextUrl();
         }
         sendResponse({ success: true });
-    } else if (request.action === 'nextUrl') {
+    } else if (request.action === MESSAGE_PREFIX + 'nextUrl') {
         if (isRunning && urls.length > 0) {
             clearAllTimeouts();
             currentUrlIndex = (currentUrlIndex + 1) % urls.length;
             loadNextUrl();
         }
         sendResponse({ success: true });
-    } else if (request.action === 'pauseScrolling' || request.action === 'resumeScrolling') {
+    } else if (request.action === MESSAGE_PREFIX + 'pauseScrolling' || request.action === MESSAGE_PREFIX + 'resumeScrolling') {
         sendResponse({ success: true });
     }
     return true; // Keep the message channel open for async responses
@@ -122,7 +124,7 @@ function loadNextUrl() {
                 currentTab = tab;
                 // Update URL info in the overlay
                 chrome.tabs.sendMessage(tab.id, {
-                    action: 'updateUrlInfo',
+                    action: MESSAGE_PREFIX + 'updateUrlInfo',
                     currentIndex: currentUrlIndex,
                     totalUrls: urls.length,
                     tabId: tab.id
@@ -132,7 +134,7 @@ function loadNextUrl() {
                     updateRetryTimeoutId = setTimeout(() => {
                         if (isRunning && currentTab) {
                             chrome.tabs.sendMessage(tab.id, {
-                                action: 'updateUrlInfo',
+                                action: MESSAGE_PREFIX + 'updateUrlInfo',
                                 currentIndex: currentUrlIndex,
                                 totalUrls: urls.length,
                                 tabId: tab.id
@@ -162,7 +164,7 @@ function createNewTab(url) {
         currentTab = tab;
         // Send a message to the new tab indicating it was created by the extension
         chrome.tabs.sendMessage(tab.id, { 
-            action: 'tabCreated',
+            action: MESSAGE_PREFIX + 'tabCreated',
             url: url,
             tabId: tab.id
         }).catch(error => {
@@ -170,7 +172,7 @@ function createNewTab(url) {
             // If we get an error, try again after a short delay
             messageRetryTimeoutId = setTimeout(() => {
                 chrome.tabs.sendMessage(tab.id, { 
-                    action: 'tabCreated',
+                    action: MESSAGE_PREFIX + 'tabCreated',
                     url: url,
                     tabId: tab.id
                 }).catch(error => {
@@ -188,7 +190,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         
         // Create overlay immediately after page load
         chrome.tabs.sendMessage(tabId, {
-            action: 'createOverlay',
+            action: MESSAGE_PREFIX + 'createOverlay',
             tabId: tabId
         }).catch(error => {
             console.log('Error creating overlay:', error);
@@ -198,7 +200,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         navigationRetryTimeoutId = setTimeout(() => {
             if (isRunning && currentTab) {
                 chrome.tabs.sendMessage(tabId, { 
-                    action: 'startScrolling',
+                    action: MESSAGE_PREFIX + 'startScrolling',
                     settings: settings,
                     urlInfo: {
                         currentIndex: currentUrlIndex,
@@ -211,7 +213,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                     setTimeout(() => {
                         if (isRunning && currentTab) {
                             chrome.tabs.sendMessage(tabId, { 
-                                action: 'startScrolling',
+                                action: MESSAGE_PREFIX + 'startScrolling',
                                 settings: settings,
                                 urlInfo: {
                                     currentIndex: currentUrlIndex,

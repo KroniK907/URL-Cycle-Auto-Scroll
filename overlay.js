@@ -28,17 +28,17 @@ function initializeOverlay() {
 
     // Navigate to previous URL
     prevUrlBtn.addEventListener('click', () => {
-        chrome.runtime.sendMessage({ action: 'previousUrl' });
+        chrome.runtime.sendMessage({ action: MESSAGE_PREFIX + 'previousUrl' });
     });
 
     // Navigate to next URL
     nextUrlBtn.addEventListener('click', () => {
-        chrome.runtime.sendMessage({ action: 'nextUrl' });
+        chrome.runtime.sendMessage({ action: MESSAGE_PREFIX + 'nextUrl' });
     });
 
     // Listen for messages from the content script
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-        if (request.action === 'updateUrlInfo') {
+        if (request.action === MESSAGE_PREFIX + 'updateUrlInfo') {
             currentUrlIndex = request.currentIndex;
             totalUrls = request.totalUrls;
             updateUrlCounter();

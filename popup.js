@@ -36,6 +36,8 @@ document.addEventListener('DOMContentLoaded', function() {
         domainSelectors: []
     };
 
+    const MESSAGE_PREFIX = 'URL_CYCLE_AUTO_SCROLL_';
+
     // Display version number
     const manifest = chrome.runtime.getManifest();
     version.textContent = `Version ${manifest.version}`;
@@ -324,7 +326,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         chrome.runtime.sendMessage({ 
-            action: 'start', 
+            action: MESSAGE_PREFIX + 'start', 
             urls: urls,
             settings: {
                 scrollMode: scrollMode.value,
@@ -340,7 +342,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Stop button functionality
     document.getElementById('stopButton').addEventListener('click', function() {
-        chrome.runtime.sendMessage({ action: 'stop' });
+        chrome.runtime.sendMessage({ action: MESSAGE_PREFIX + 'stop' });
         status.textContent = 'Stopped';
     });
 
