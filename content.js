@@ -227,8 +227,10 @@ document.addEventListener('fullscreenchange', () => {
     });
 });
 
+// Listen for messages from the background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log('Content script received message:', request);
+    
     if (request.action === 'tabCreated') {
         extensionTabId = request.tabId;
         // Create and dispatch a custom event that can be listened to by other scripts
@@ -241,6 +243,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
         document.dispatchEvent(event);
     } else if (request.action === 'startScrolling') {
+        console.log('Starting scroll with settings:', request.settings);
         // Reset state before starting new scroll
         resetScrollState();
         
@@ -252,13 +255,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 updateUrlCounter(counter);
             }
         }
-        startScrolling(request.settings);
+        
+        // Check if we're already at the bottom
+        const scrollElement = getScrollElement();
+        const maxScroll = scrollElement.scrollHeight - scrollElement.clientHeight;
+        const isAtBottom = Math.abs(scrollElement.scrollTop - maxScroll) < 1;
+        
+        console.log('Scroll check:', {
+            scrollHeight: scrollElement.scrollHeight,
+            clientHeight: scrollElement.clientHeight,
+            scrollTop: scrollElement.scrollTop,
+            maxScroll: maxScroll,
+            isAtBottom: isAtBottom
+        });
+        
+        if (isAtBottom) {
+            console.log('Already at bottom, adding extra pause');
+            // Add extra pause before starting scroll
+            setTimeout(() => {
+                startScrolling(request.settings);
+            }, 5000); // 5 second extra pause
+        } else {
+            startScrolling(request.settings);
+        }
+        
+        sendResponse({ status: 'started' });
     } else if (request.action === 'pauseScrolling') {
         isPaused = true;
         if (scrollInterval) {
             clearInterval(scrollInterval);
             scrollInterval = null;
         }
+        sendResponse({ status: 'paused' });
     } else if (request.action === 'resumeScrolling') {
         isPaused = false;
         const scrollElement = getScrollElement();
@@ -267,6 +295,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         } else {
             startPageJump(scrollElement, request.settings);
         }
+        sendResponse({ status: 'resumed' });
     } else if (request.action === 'updateUrlInfo') {
         currentUrlIndex = request.currentIndex;
         totalUrls = request.totalUrls;
@@ -274,11 +303,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (counter) {
             updateUrlCounter(counter);
         }
+        sendResponse({ status: 'url info updated' });
     } else if (request.action === 'createOverlay') {
         if(request.tabId) {
             extensionTabId = request.tabId;
         }
         tryCreateControls();
+        sendResponse({ status: 'overlay created' });
     }
 });
 
