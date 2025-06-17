@@ -24,10 +24,60 @@
             text-align: center;
         }
 
+        .accordion {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: white;
+        }
+
+        .accordion-header {
+            padding: 12px 15px;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 500;
+            color: #2c3e50;
+            border-bottom: 1px solid #e9ecef;
+            transition: background-color 0.2s;
+        }
+
+        .accordion-header:hover {
+            background-color: #e9ecef;
+        }
+
+        .accordion-content {
+            padding: 15px;
+            display: none;
+        }
+
+        .accordion-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .accordion-arrow {
+            width: 12px;
+            height: 12px;
+            border-right: 2px solid #2c3e50;
+            border-bottom: 2px solid #2c3e50;
+            transform: rotate(45deg);
+            transition: transform 0.2s;
+            margin-top: -6px;
+        }
+
+        .accordion-header.active .accordion-arrow {
+            transform: rotate(-135deg);
+            margin-top: 6px;
+        }
+
         .input-group {
             display: flex;
             flex-direction: column;
             gap: 8px;
+            margin-bottom: 12px;
         }
 
         label {
@@ -76,6 +126,23 @@
             display: flex;
             gap: 8px;
             margin-top: 5px;
+            flex-wrap: wrap;
+        }
+
+        .action-buttons {
+            margin-bottom: 15px;
+        }
+
+        .utility-buttons {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .utility-buttons button {
+            flex: 1;
+            min-width: 120px;
         }
 
         button {
@@ -86,7 +153,8 @@
             font-weight: 500;
             cursor: pointer;
             transition: background-color 0.2s, transform 0.1s;
-            /* flex: 1; */
+            flex: 1;
+            min-width: 120px;
         }
 
         button:hover {
@@ -115,6 +183,33 @@
             background-color: #da190b;
         }
 
+        #exportButton {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        #exportButton:hover {
+            background-color: #1976D2;
+        }
+
+        #importButton {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        #importButton:hover {
+            background-color: #1976D2;
+        }
+
+        #resetButton {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        #resetButton:hover {
+            background-color: #c82333;
+        }
+
         #addDomainSelector {
             background-color: #2196F3;
             color: white;
@@ -137,7 +232,7 @@
         }
 
         .domain-selector input {
-            flex:auto;
+            flex: auto;
         }
 
         .domain-selector .remove-selector {
@@ -201,56 +296,87 @@
 </head>
 <body>
     <h1>URL Cycle & Auto Scroll</h1>
+
+    <div class="button-group action-buttons">
+        <button id="startButton">Start</button>
+        <button id="stopButton">Stop</button>
+    </div>
+
     <div class="input-group">
         <label for="urlList">URLs to Cycle Through:</label>
         <textarea id="urlList" placeholder="Enter URLs (one per line)"></textarea>
     </div>
 
-    <div class="input-group">
-        <label for="scrollMode">Scroll Mode:</label>
-        <select id="scrollMode">
-            <option value="continuous">Continuous Scroll</option>
-            <option value="pageJump">Page Jump</option>
-        </select>
+    <div class="accordion">
+        <div class="accordion-header" id="scrollSettingsHeader">
+            <span>Scroll Settings</span>
+            <div class="accordion-arrow"></div>
+        </div>
+        <div class="accordion-content" id="scrollSettingsContent">
+            <div class="input-group">
+                <label for="scrollMode">Scroll Mode:</label>
+                <select id="scrollMode">
+                    <option value="continuous">Continuous Scroll</option>
+                    <option value="pageJump">Page Jump</option>
+                </select>
+            </div>
+
+            <div id="continuousSettings" class="settings-group">
+                <div class="input-group">
+                    <label for="scrollSpeed">Scroll Speed (pixels per second):</label>
+                    <input type="number" id="scrollSpeed" min="1" max="1000" value="100">
+                </div>
+                <div class="input-group">
+                    <label for="initialDelay">Initial Delay (seconds):</label>
+                    <input type="number" id="initialDelay" min="0" max="60" value="2">
+                </div>
+                <div class="input-group">
+                    <label for="bottomPause">Pause at Bottom (seconds):</label>
+                    <input type="number" id="bottomPause" min="0" max="60" value="2">
+                </div>
+            </div>
+
+            <div id="pageJumpSettings" class="settings-group" style="display: none;">
+                <div class="input-group">
+                    <label for="jumpPercentage">Jump Percentage:</label>
+                    <input type="number" id="jumpPercentage" min="1" max="100" value="25">
+                </div>
+                <div class="input-group">
+                    <label for="jumpDelay">Delay Between Jumps (seconds):</label>
+                    <input type="number" id="jumpDelay" min="0.1" max="60" step="0.1" value="1">
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div id="continuousSettings" class="settings-group">
-        <div class="input-group">
-            <label for="scrollSpeed">Scroll Speed (pixels per second):</label>
-            <input type="number" id="scrollSpeed" min="1" max="1000" value="100">
+    <div class="accordion">
+        <div class="accordion-header" id="domainSelectorsHeader">
+            <span>Domain Scroll Selectors</span>
+            <div class="accordion-arrow"></div>
         </div>
-        <div class="input-group">
-            <label for="initialDelay">Initial Delay (seconds):</label>
-            <input type="number" id="initialDelay" min="0" max="60" value="2">
-        </div>
-        <div class="input-group">
-            <label for="bottomPause">Pause at Bottom (seconds):</label>
-            <input type="number" id="bottomPause" min="0" max="60" value="2">
+        <div class="accordion-content" id="domainSelectorsContent">
+            <div id="domainSelectors"></div>
+            <button id="addDomainSelector">Add Domain Selector</button>
         </div>
     </div>
 
-    <div id="pageJumpSettings" class="settings-group" style="display: none;">
-        <div class="input-group">
-            <label for="jumpPercentage">Jump Percentage:</label>
-            <input type="number" id="jumpPercentage" min="1" max="100" value="25">
+    <div class="accordion">
+        <div class="accordion-header" id="utilityHeader">
+            <span>Settings Management</span>
+            <div class="accordion-arrow"></div>
         </div>
-        <div class="input-group">
-            <label for="jumpDelay">Delay Between Jumps (seconds):</label>
-            <input type="number" id="jumpDelay" min="0.1" max="60" step="0.1" value="1">
+        <div class="accordion-content" id="utilityContent">
+            <div class="button-group utility-buttons">
+                <button id="exportButton">Export Settings</button>
+                <button id="importButton">Import Settings</button>
+                <button id="resetButton">Reset Settings</button>
+                <input type="file" id="importFile" accept=".json" style="display: none;">
+            </div>
         </div>
     </div>
 
-    <div class="input-group">
-        <label>Domain Scroll Selectors:</label>
-        <div id="domainSelectors"></div>
-        <button id="addDomainSelector">Add Domain Selector</button>
-    </div>
-
-    <div class="button-group">
-        <button id="startButton">Start</button>
-        <button id="stopButton">Stop</button>
-    </div>
     <div id="status">Ready</div>
+    <div id="version" style="text-align: center; color: #666; font-size: 12px; margin-top: 8px;"></div>
     <script src="popup.js"></script>
 </body>
 </html> 
