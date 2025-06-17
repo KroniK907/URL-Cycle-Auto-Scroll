@@ -12,7 +12,6 @@ const SCROLL_INTERVAL = 50;
 // Reset all scroll-related parameters
 function resetScrollState() {
     isScrolling = false;
-    isPaused = false;
     if (scrollInterval) {
         clearInterval(scrollInterval);
         scrollInterval = null;
@@ -281,11 +280,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         
         sendResponse({ status: 'started' });
     } else if (request.action === 'pauseScrolling') {
-        isPaused = true;
         if (scrollInterval) {
             clearInterval(scrollInterval);
             scrollInterval = null;
         }
+        isPaused = true;
         sendResponse({ status: 'paused' });
     } else if (request.action === 'resumeScrolling') {
         isPaused = false;
@@ -332,7 +331,6 @@ function startScrolling(settings) {
     resetScrollState();
     
     isScrolling = true;
-    isPaused = false;
     const scrollElement = getScrollElement();
     
     if (settings.scrollMode === 'continuous') {
