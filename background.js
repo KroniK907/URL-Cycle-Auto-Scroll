@@ -4,7 +4,7 @@ let currentUrlIndex = 0;
 let isRunning = false;
 let settings = {
     scrollMode: 'continuous',
-    scrollSpeed: 1,
+    scrollSpeed: 10,
     jumpAmount: 300,
     jumpDelay: 3,
     initialDelay: 5000,

@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const defaultSettings = {
         settings: {
             scrollMode: 'continuous',
-            scrollSpeed: 100,
+            scrollSpeed: 10,
             initialDelay: 2,
             bottomPause: 2,
             jumpPercentage: 25,
