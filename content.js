@@ -168,12 +168,18 @@ function setupEventListeners(playPauseBtn, prevBtn, nextBtn, urlCounter) {
 
     // Navigate to previous URL
     prevBtn.addEventListener('click', () => {
-        chrome.runtime.sendMessage({ action: 'previousUrl' });
+        console.log('Previous button clicked');
+        chrome.runtime.sendMessage({ action: 'previousUrl' }, (response) => {
+            console.log('Previous URL response:', response);
+        });
     });
 
     // Navigate to next URL
     nextBtn.addEventListener('click', () => {
-        chrome.runtime.sendMessage({ action: 'nextUrl' });
+        console.log('Next button clicked');
+        chrome.runtime.sendMessage({ action: 'nextUrl' }, (response) => {
+            console.log('Next URL response:', response);
+        });
     });
 }
 
@@ -200,7 +206,29 @@ function tryCreateControls() {
     }
 }
 
+// Add diagnostic function for scroll state
+function logScrollState() {
+    const scrollElement = getScrollElement();
+    console.log('Scroll State:', {
+        scrollHeight: scrollElement.scrollHeight,
+        clientHeight: scrollElement.clientHeight,
+        scrollTop: scrollElement.scrollTop,
+        maxScroll: scrollElement.scrollHeight - scrollElement.clientHeight,
+        isFullscreen: document.fullscreenElement !== null
+    });
+}
+
+// Add fullscreen change listener
+document.addEventListener('fullscreenchange', () => {
+    console.log('Fullscreen changed:', {
+        isFullscreen: document.fullscreenElement !== null,
+        scrollElement: getScrollElement(),
+        controlsVisible: document.getElementById('scrollControls') !== null
+    });
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log('Content script received message:', request);
     if (request.action === 'tabCreated') {
         extensionTabId = request.tabId;
         // Create and dispatch a custom event that can be listened to by other scripts
@@ -212,7 +240,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
         });
         document.dispatchEvent(event);
-        tryCreateControls();
     } else if (request.action === 'startScrolling') {
         // Reset state before starting new scroll
         resetScrollState();
@@ -292,8 +319,28 @@ function startContinuousScroll(scrollElement, settings) {
     
     if (scrollInterval) {
         clearInterval(scrollInterval);
-        scrollInterval = null;
     }
+
+    // Add resize event listener to recalculate maxScroll
+    const handleResize = () => {
+        console.log('Resize event triggered');
+        logScrollState();
+        const maxScroll = scrollElement.scrollHeight - scrollElement.clientHeight;
+        // If we're past the new maxScroll, adjust the position
+        if (scrollPosition > maxScroll) {
+            scrollPosition = maxScroll;
+            if (scrollElement !== document.documentElement) {
+                scrollElement.scrollTop = scrollPosition;
+            } else {
+                window.scrollTo({
+                    top: scrollPosition,
+                    behavior: 'auto'
+                });
+            }
+        }
+    };
+
+    window.addEventListener('resize', handleResize);
     
     scrollInterval = setInterval(() => {
         if (isPaused) {
@@ -317,10 +364,14 @@ function startContinuousScroll(scrollElement, settings) {
         
         if (scrollPosition >= maxScroll) {
             // Reached bottom
+            console.log('Reached bottom, sending message');
             clearInterval(scrollInterval);
             scrollInterval = null;
             isScrolling = false;
-            chrome.runtime.sendMessage({ action: 'reachedBottom' });
+            window.removeEventListener('resize', handleResize);
+            chrome.runtime.sendMessage({ action: 'reachedBottom' }, (response) => {
+                console.log('Reached bottom response:', response);
+            });
         } else {
             // Calculate smooth scroll amount based on time difference
             const scrollAmount = (settings.scrollSpeed * timeDiff) / SCROLL_INTERVAL;
@@ -347,12 +398,28 @@ function startContinuousScroll(scrollElement, settings) {
 }
 
 function startPageJump(scrollElement, settings) {
-    let currentPosition = 0;
+    let currentPosition = scrollElement.scrollTop || window.scrollY;
     
     if (scrollInterval) {
         clearInterval(scrollInterval);
         scrollInterval = null;
     }
+
+    // Add resize event listener to recalculate maxScroll
+    const handleResize = () => {
+        const maxScroll = scrollElement.scrollHeight - scrollElement.clientHeight;
+        // If we're past the new maxScroll, adjust the position
+        if (currentPosition > maxScroll) {
+            currentPosition = maxScroll;
+            if (scrollElement !== document.documentElement) {
+                scrollElement.scrollTop = currentPosition;
+            } else {
+                window.scrollTo(0, currentPosition);
+            }
+        }
+    };
+
+    window.addEventListener('resize', handleResize);
     
     function jump() {
         if (!isScrolling || isPaused) return;
@@ -362,6 +429,7 @@ function startPageJump(scrollElement, settings) {
         if (currentPosition >= maxScroll) {
             // Reached bottom
             isScrolling = false;
+            window.removeEventListener('resize', handleResize);
             chrome.runtime.sendMessage({ action: 'reachedBottom' });
             return;
         }
@@ -378,7 +446,6 @@ function startPageJump(scrollElement, settings) {
             window.scrollTo(0, currentPosition);
         }
         
-        // Schedule next jump
         scrollInterval = setTimeout(jump, settings.jumpDelay * 1000);
     }
     

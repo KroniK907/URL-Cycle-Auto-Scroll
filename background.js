@@ -61,6 +61,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             bottomPause: request.settings.bottomPause * 1000
         };
         loadNextUrl();
+        sendResponse({ success: true });
     } else if (request.action === 'stop') {
         isRunning = false;
         clearAllTimeouts();
@@ -68,6 +69,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             chrome.tabs.remove(currentTab.id);
             currentTab = null;
         }
+        sendResponse({ success: true });
     } else if (request.action === 'getUrlInfo') {
         // Send current URL information
         sendResponse({
@@ -76,44 +78,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 totalUrls: urls.length
             }
         });
-        return true; // Keep the message channel open for async response
-    } else if (request.action === 'pageLoaded') {
-        chrome.tabs.sendMessage(currentTab.id, { 
-            action: 'createOverlay',
-            tabId: currentTab.id
-        });
-        // Wait a bit to ensure the page is fully rendered
-        initialDelayTimeoutId = setTimeout(() => {
-            if (isRunning && currentTab) {
-                chrome.tabs.sendMessage(currentTab.id, { 
-                    action: 'startScrolling',
-                    settings: settings,
-                    urlInfo: {
-                        currentIndex: currentUrlIndex,
-                        totalUrls: urls.length
-                    },
-                    tabId: currentTab.id
-                }).catch(error => {
-                    console.log('Error sending startScrolling message:', error);
-                    // If we get an error, try again after a short delay
-                    retryTimeoutId = setTimeout(() => {
-                        if (isRunning && currentTab) {
-                            chrome.tabs.sendMessage(currentTab.id, { 
-                                action: 'startScrolling',
-                                settings: settings,
-                                urlInfo: {
-                                    currentIndex: currentUrlIndex,
-                                    totalUrls: urls.length
-                                },
-                                tabId: currentTab.id
-                            }).catch(error => {
-                                console.log('Second attempt failed:', error);
-                            });
-                        }
-                    }, 1000);
-                });
-            }
-        }, settings.initialDelay);
     } else if (request.action === 'reachedBottom') {
         if (isRunning) {
             bottomPauseTimeoutId = setTimeout(() => {
@@ -121,19 +85,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 loadNextUrl();
             }, settings.bottomPause);
         }
+        sendResponse({ success: true });
     } else if (request.action === 'previousUrl') {
         if (isRunning && urls.length > 0) {
             clearAllTimeouts();
             currentUrlIndex = (currentUrlIndex - 1 + urls.length) % urls.length;
             loadNextUrl();
         }
+        sendResponse({ success: true });
     } else if (request.action === 'nextUrl') {
         if (isRunning && urls.length > 0) {
             clearAllTimeouts();
             currentUrlIndex = (currentUrlIndex + 1) % urls.length;
             loadNextUrl();
         }
+        sendResponse({ success: true });
+    } else if (request.action === 'pauseScrolling' || request.action === 'resumeScrolling') {
+        sendResponse({ success: true });
     }
+    return true; // Keep the message channel open for async responses
 });
 
 function loadNextUrl() {
@@ -215,7 +185,16 @@ function createNewTab(url) {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (currentTab && tabId === currentTab.id && changeInfo.status === 'complete') {
         clearAllTimeouts();
-        // Wait a bit to ensure the page is fully rendered
+        
+        // Create overlay immediately after page load
+        chrome.tabs.sendMessage(tabId, {
+            action: 'createOverlay',
+            tabId: tabId
+        }).catch(error => {
+            console.log('Error creating overlay:', error);
+        });
+
+        // Then wait for initial delay before starting scroll
         navigationRetryTimeoutId = setTimeout(() => {
             if (isRunning && currentTab) {
                 chrome.tabs.sendMessage(tabId, { 
